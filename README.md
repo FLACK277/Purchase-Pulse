@@ -1,6 +1,13 @@
-# 🚗 Purchase Pulse
+# 🚗 PurchasePulse
 
-## 📋 Overview
+<div align="center">
+  <img src="https://img.shields.io/badge/Python-3.8+-blue?style=for-the-badge&logo=python" alt="Python Version">
+  <img src="https://img.shields.io/badge/Machine%20Learning-Regression-green?style=for-the-badge" alt="ML Type">
+  <img src="https://img.shields.io/badge/GUI-Tkinter-orange?style=for-the-badge" alt="GUI Framework">
+  <img src="https://img.shields.io/badge/Status-Complete-success?style=for-the-badge" alt="Status">
+</div>
+
+## 📋 Project Overview
 
 An intelligent machine learning system designed to predict potential car purchase amounts based on customer financial profiles and demographics. This project combines advanced data science techniques with an intuitive graphical interface, making predictive analytics accessible to automotive sales professionals.
 
@@ -52,8 +59,8 @@ Ensure you have Python 3.8 or higher installed on your system.
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/car-purchase-predictor.git
-   cd car-purchase-predictor
+   git clone https://github.com/yourusername/purchasepulse.git
+   cd purchasepulse
    ```
 
 2. **Install dependencies**
@@ -69,7 +76,7 @@ Ensure you have Python 3.8 or higher installed on your system.
 
 #### 📈 **Model Training**
 ```bash
-python car_purchase_analysis.py
+python purchasepulse_analysis.py
 ```
 This command will:
 - Load and preprocess your dataset
@@ -80,7 +87,7 @@ This command will:
 
 #### 🖱️ **GUI Application**
 ```bash
-python car_purchase_predictor_gui.py
+python purchasepulse_gui.py
 ```
 Launch the interactive interface to:
 - Input customer information through form fields
@@ -123,7 +130,7 @@ Our ensemble approach achieves:
 
 ### Adding New Features
 ```python
-# In car_purchase_analysis.py
+# In purchasepulse_analysis.py
 def create_custom_features(df):
     df['savings_rate'] = (df['net_worth'] / df['annual_salary'])
     df['age_income_interaction'] = df['age'] * df['annual_salary']
@@ -146,14 +153,14 @@ models = {
 ## 📁 Project Structure
 
 ```
-car-purchase-predictor/
-├── car_purchase_analysis.py      # Main training pipeline
-├── car_purchase_predictor_gui.py # GUI application
-├── requirements.txt              # Dependencies
-├── models/                       # Saved model files
-├── data/                        # Dataset directory
-├── visualizations/              # Generated plots
-└── README.md                    # This file
+purchasepulse/
+├── purchasepulse_analysis.py        # Main training pipeline
+├── purchasepulse_gui.py             # GUI application
+├── requirements.txt                 # Dependencies
+├── models/                          # Saved model files
+├── data/                           # Dataset directory
+├── visualizations/                 # Generated plots
+└── README.md                       # This file
 ```
 
 ## 🤝 Contributing
