@@ -1,13 +1,6 @@
 # 🚗 Purchase Pulse
 
-<div align="center">
-  <img src="https://img.shields.io/badge/Python-3.8+-blue?style=for-the-badge&logo=python" alt="Python Version">
-  <img src="https://img.shields.io/badge/Machine%20Learning-Regression-green?style=for-the-badge" alt="ML Type">
-  <img src="https://img.shields.io/badge/GUI-Tkinter-orange?style=for-the-badge" alt="GUI Framework">
-  <img src="https://img.shields.io/badge/Status-Complete-success?style=for-the-badge" alt="Status">
-</div>
-
-## 📋 Project Overview
+## 📋 Overview
 
 An intelligent machine learning system designed to predict potential car purchase amounts based on customer financial profiles and demographics. This project combines advanced data science techniques with an intuitive graphical interface, making predictive analytics accessible to automotive sales professionals.
 
