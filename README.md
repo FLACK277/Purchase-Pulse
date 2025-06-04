@@ -135,7 +135,7 @@ Our ensemble approach achieves excellent prediction accuracy:
 - **Cross-Validation**: 5-fold validation with R² > 0.85
 - **RMSE**: < $3,000 (Root Mean Square Error in price prediction)
 - **MAE**: < $2,000 (Mean Absolute Error)
-- **Overfitting Detection**: Automated train/test performance comparisonsssssssssssssssssssssssssssssssssss
+- **Overfitting Detection**: Automated train/test performance comparison
 
 ### 🏆 Available Models
 1. **Ridge Regression** - L2 regularization for stable predictions
