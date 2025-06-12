@@ -11,7 +11,7 @@ The system analyzes vehicle characteristics such as manufacturer, model, engine 
 ### 🔍 **Advanced Data Processing**
 - Synthetic realistic car data generation with 15+ manufacturers
 - Intelligent missing value imputation and data validation
-- Comprehensive feature engineering with derived metrics
+- Comprehensive feature engineering with derived metric
 - Robust preprocessing pipeline with scaling and encoding
 
 ### 🧠 **Machine Learning Pipeline**
