@@ -9,7 +9,6 @@ from sklearn.feature_selection import SelectKBest, f_regression
 import joblib
 import os
 
-# Copy the CarPricePredictor class from your notebook (without GUI parts)
 class CarPricePredictor:
     def __init__(self):
         self.model = None
@@ -17,7 +16,7 @@ class CarPricePredictor:
         self.scaler = StandardScaler()
         self.feature_selector = None
         self.feature_cols = None
-        
+
     def generate_data(self, n=2000):
         """Generate training data - more samples = better accuracy"""
         np.random.seed(42)
@@ -38,8 +37,8 @@ class CarPricePredictor:
         
         types = ['Sedan', 'SUV', 'Hatchback', 'Coupe', 'Convertible', 'Wagon', 'Pickup']
         fuels = ['Gas', 'Diesel', 'Hybrid', 'Electric']
-        
         data = []
+        
         for i in range(n):
             brand = np.random.choice(list(brands.keys()))
             brand_info = brands[brand]
@@ -91,12 +90,12 @@ class CarPricePredictor:
                 mpg = np.random.uniform(40, 55)
             else:
                 mpg = 32 - (engine * 2.5) - (weight / 350) + np.random.normal(0, 3)
-            mpg = np.clip(mpg, 12, 130)
+                mpg = np.clip(mpg, 12, 130)
             
             # key insight: power-to-weight ratio matters a lot for pricing
             pwr_weight = hp / (weight / 1000)
             
-            # complex price calculation - this is where the magic happens
+            # complex price calculation
             base_price = np.random.uniform(*brand_info['price'])
             
             # luxury premium
@@ -108,7 +107,7 @@ class CarPricePredictor:
             base_price *= fuel_mult
             
             # type premium
-            type_mult = {'Convertible': 1.2, 'Coupe': 1.1, 'SUV': 1.05, 'Pickup': 1.03, 
+            type_mult = {'Convertible': 1.2, 'Coupe': 1.1, 'SUV': 1.05, 'Pickup': 1.03,
                         'Sedan': 1.0, 'Wagon': 0.98, 'Hatchback': 0.95}[vtype]
             base_price *= type_mult
             
@@ -154,20 +153,11 @@ class CarPricePredictor:
                 'price': round(base_price, 2)
             })
         
-        df = pd.DataFrame(data)
-        df.to_csv('car_data_enhanced.csv', index=False)
-        return df
-    
-    def load_data(self):
-        try:
-            return pd.read_csv('car_data_enhanced.csv')
-        except:
-            return self.generate_data()
-    
+        return pd.DataFrame(data)
+
     def train(self):
         """Train with hyperparameter tuning for best accuracy"""
-        df = self.load_data()
-        
+        df = self.generate_data()
         X = df.drop('price', axis=1)
         y = df['price']
         
@@ -186,7 +176,6 @@ class CarPricePredictor:
         
         # scaling helps with some algorithms
         X_scaled = self.scaler.fit_transform(X_selected)
-        
         X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.15, random_state=42)
         
         # try different models with tuning
@@ -199,6 +188,7 @@ class CarPricePredictor:
             'min_samples_split': [2, 5],
             'max_features': ['sqrt', 'log2']
         }
+        
         rf_grid = GridSearchCV(RandomForestRegressor(random_state=42), rf_params, cv=5, scoring='r2')
         rf_grid.fit(X_train, y_train)
         models['RF'] = rf_grid.best_estimator_
@@ -209,6 +199,7 @@ class CarPricePredictor:
             'learning_rate': [0.05, 0.1],
             'max_depth': [6, 8]
         }
+        
         gb_grid = GridSearchCV(GradientBoostingRegressor(random_state=42), gb_params, cv=5, scoring='r2')
         gb_grid.fit(X_train, y_train)
         models['GB'] = gb_grid.best_estimator_
@@ -221,9 +212,8 @@ class CarPricePredictor:
                 best_score = score
                 self.model = model
         
-        self.save_model()
         return best_score
-    
+
     def predict(self, specs):
         if not self.model:
             raise Exception("Model not trained")
@@ -238,42 +228,38 @@ class CarPricePredictor:
         
         # create dataframe and select features
         df = pd.DataFrame([specs])
+        
+        # Ensure all required columns are present
+        for col in self.feature_cols:
+            if col not in df.columns:
+                df[col] = 0
+        
+        # Select only the features used during training
+        df = df[self.feature_cols]
+        
         df_selected = self.feature_selector.transform(df)
         df_scaled = self.scaler.transform(df_selected)
         
         return self.model.predict(df_scaled)[0]
-    
-    def save_model(self):
-        data = {
-            'model': self.model,
-            'encoders': self.encoders,
-            'scaler': self.scaler,
-            'selector': self.feature_selector,
-            'features': self.feature_cols
-        }
-        joblib.dump(data, 'car_model_v2.joblib')
-    
-    def load_model(self):
-        try:
-            data = joblib.load('car_model_v2.joblib')
-            self.model = data['model']
-            self.encoders = data['encoders']
-            self.scaler = data['scaler']
-            self.feature_selector = data['selector']
-            self.feature_cols = data['features']
-            return True
-        except:
-            return False
 
 # Initialize the predictor with caching
 @st.cache_resource
 def load_predictor():
     predictor = CarPricePredictor()
-    if not predictor.load_model():
-        with st.spinner("Training model for the first time... This may take a moment."):
-            accuracy = predictor.train()
-            st.success(f"Model trained with {accuracy*100:.1f}% accuracy!")
+    with st.spinner("Training model... This may take a moment."):
+        accuracy = predictor.train()
+        st.success(f"Model trained with {accuracy*100:.1f}% accuracy!")
     return predictor
+
+def get_category(price):
+    if price < 20:
+        return "Budget"
+    elif price < 35:
+        return "Mid-Range"
+    elif price < 60:
+        return "Premium"
+    else:
+        return "Luxury"
 
 # Streamlit App
 def main():
@@ -297,7 +283,6 @@ def main():
     
     # Input form
     st.header("Vehicle Specifications")
-    
     col1, col2, col3 = st.columns(3)
     
     with col1:
@@ -306,7 +291,7 @@ def main():
         vtype = st.selectbox("Type", ['Sedan', 'SUV', 'Hatchback', 'Coupe', 'Convertible', 'Wagon', 'Pickup'])
         fuel = st.selectbox("Fuel Type", ['Gas', 'Diesel', 'Hybrid', 'Electric'])
         age = st.slider("Age (years)", 0.0, 20.0, 3.0, 0.1)
-        
+    
     with col2:
         st.subheader("Performance")
         if units == "US":
@@ -417,17 +402,7 @@ def main():
                 st.write(f"**Market Segment:** {category}")
         
         except Exception as e:
-            st.error(f"Prediction failed: {e}")
-
-def get_category(price):
-    if price < 20:
-        return "Budget"
-    elif price < 35:
-        return "Mid-Range"
-    elif price < 60:
-        return "Premium"
-    else:
-        return "Luxury"
+            st.error(f"Prediction failed: {str(e)}")
 
 if __name__ == "__main__":
     main()
