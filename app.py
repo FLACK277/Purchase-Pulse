@@ -18,10 +18,8 @@ class CarPricePredictor:
         self.is_trained = False
 
     def generate_data(self, n=2000):
-        """Generate sophisticated synthetic training data"""
         np.random.seed(42)
         
-        # Comprehensive brand data with market positioning
         brands = {
             'Toyota': {'luxury': False, 'price': (15, 45), 'reliability': 0.92},
             'Honda': {'luxury': False, 'price': (18, 42), 'reliability': 0.90},
@@ -45,15 +43,12 @@ class CarPricePredictor:
             vtype = np.random.choice(types)
             fuel = np.random.choice(fuels, p=[0.6, 0.25, 0.1, 0.05])
             
-            # Age with realistic distribution
             age = np.random.exponential(3)
             age = min(age, 20)
             
-            # Mileage correlated with age
             mileage = age * np.random.uniform(8000, 15000) + np.random.normal(0, 5000)
             mileage = max(0, mileage)
             
-            # Engine specs based on fuel type
             if fuel == 'Electric':
                 engine = 0.0
                 hp = np.random.uniform(150, 400)
@@ -68,7 +63,6 @@ class CarPricePredictor:
             
             hp = np.clip(hp, 100, 600)
             
-            # Vehicle dimensions by type
             if vtype == 'SUV':
                 length, width, weight = 195, 75, 4200
             elif vtype == 'Pickup':
@@ -82,7 +76,6 @@ class CarPricePredictor:
             width += np.random.uniform(-3, 3)
             weight += np.random.uniform(-400, 400)
             
-            # Fuel efficiency calculations
             if fuel == 'Electric':
                 mpg = np.random.uniform(100, 130)
             elif fuel == 'Hybrid':
@@ -91,44 +84,31 @@ class CarPricePredictor:
                 mpg = 32 - (engine * 2.5) - (weight / 350) + np.random.normal(0, 3)
                 mpg = np.clip(mpg, 12, 130)
             
-            # Power-to-weight ratio (key performance metric)
             pwr_weight = hp / (weight / 1000)
             
-            # Complex price modeling
             base_price = np.random.uniform(*brand_info['price'])
             
-            # Luxury premium
             if brand_info['luxury']:
                 base_price *= 1.3
             
-            # Fuel type adjustments
             fuel_mult = {'Electric': 1.2, 'Hybrid': 1.1, 'Diesel': 1.05, 'Gas': 1.0}[fuel]
             base_price *= fuel_mult
             
-            # Vehicle type premiums
             type_mult = {'Convertible': 1.2, 'Coupe': 1.1, 'SUV': 1.05, 'Pickup': 1.03,
                         'Sedan': 1.0, 'Wagon': 0.98, 'Hatchback': 0.95}[vtype]
             base_price *= type_mult
             
-            # Depreciation curve
             depreciation = 0.85 ** age
             base_price *= depreciation
             
-            # Mileage impact
             mileage_factor = max(0.3, 1 - (mileage / 200000) * 0.4)
             base_price *= mileage_factor
             
-            # Performance premium
             base_price *= (1 + (pwr_weight - 100) / 1000)
-            
-            # Reliability factor
             base_price *= (1 + brand_info['reliability'] - 0.8)
-            
-            # Market noise
             base_price += np.random.normal(0, 3)
             base_price = np.clip(base_price, 8, 250)
             
-            # Market data
             sales = np.random.lognormal(3.5, 0.8)
             sales = np.clip(sales, 5, 300)
             
@@ -146,33 +126,34 @@ class CarPricePredictor:
         return pd.DataFrame(data)
 
     def train(self):
-        """Train ensemble model with hyperparameter optimization"""
         print("Generating training dataset...")
         df = self.generate_data()
         
         X = df.drop('price', axis=1)
         y = df['price']
         
-        # Encode categorical features
+        # Store original column names for debugging
+        self.original_columns = X.columns.tolist()
+        print(f"Training features: {self.original_columns}")
+        
         categorical_cols = ['brand', 'type', 'fuel']
         for col in categorical_cols:
             le = LabelEncoder()
             X[col] = le.fit_transform(X[col])
             self.encoders[col] = le
         
-        # Feature selection
         selector = SelectKBest(score_func=f_regression, k=12)
         X_selected = selector.fit_transform(X, y)
         self.feature_selector = selector
         self.feature_cols = X.columns[selector.get_support()].tolist()
         
-        # Feature scaling
+        print(f"Selected features: {self.feature_cols}")
+        
         X_scaled = self.scaler.fit_transform(X_selected)
         X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.15, random_state=42)
         
-        print("Training ensemble models with hyperparameter optimization...")
+        print("Training ensemble models...")
         
-        # Random Forest with grid search
         rf_params = {
             'n_estimators': [200, 300],
             'max_depth': [15, 20],
@@ -182,7 +163,6 @@ class CarPricePredictor:
         rf_grid = GridSearchCV(RandomForestRegressor(random_state=42), rf_params, cv=5, scoring='r2')
         rf_grid.fit(X_train, y_train)
         
-        # Gradient Boosting with grid search
         gb_params = {
             'n_estimators': [200, 300],
             'learning_rate': [0.05, 0.1],
@@ -191,7 +171,6 @@ class CarPricePredictor:
         gb_grid = GridSearchCV(GradientBoostingRegressor(random_state=42), gb_params, cv=5, scoring='r2')
         gb_grid.fit(X_train, y_train)
         
-        # Select best model
         models = {'RandomForest': rf_grid.best_estimator_, 'GradientBoosting': gb_grid.best_estimator_}
         best_score = 0
         
@@ -204,38 +183,33 @@ class CarPricePredictor:
         
         self.is_trained = True
         print(f"Best model R²: {best_score:.4f} ({best_score*100:.1f}% accuracy)")
-        
-        # Feature importance analysis
-        if hasattr(self.model, 'feature_importances_'):
-            importance_df = pd.DataFrame({
-                'feature': self.feature_cols,
-                'importance': self.model.feature_importances_
-            }).sort_values('importance', ascending=False)
-            print("\nTop 5 most important features:")
-            print(importance_df.head().to_string(index=False))
-        
         return best_score
 
     def predict(self, specs):
-        """Make price prediction"""
         if not self.is_trained:
             raise Exception("Model not trained")
         
+        # Create a copy to avoid modifying original
+        input_specs = specs.copy()
+        
         # Encode categorical variables
         for col, encoder in self.encoders.items():
-            if col in specs:
+            if col in input_specs:
                 try:
-                    specs[col] = encoder.transform([specs[col]])[0]
+                    input_specs[col] = encoder.transform([input_specs[col]])[0]
                 except:
-                    specs[col] = 0
+                    input_specs[col] = 0
         
-        # Create dataframe and ensure all features present
-        df = pd.DataFrame([specs])
-        for col in self.feature_cols:
+        # Create dataframe with ALL original training columns
+        df = pd.DataFrame([input_specs])
+        
+        # Ensure ALL original training features are present
+        for col in self.original_columns:
             if col not in df.columns:
                 df[col] = 0
         
-        df = df[self.feature_cols]
+        # Reorder columns to match training order
+        df = df[self.original_columns]
         
         # Apply feature selection and scaling
         df_selected = self.feature_selector.transform(df)
@@ -250,17 +224,26 @@ predictor = CarPricePredictor()
 accuracy = predictor.train()
 
 def predict_car_price(brand, vtype, fuel, age, mileage, sales, resale, engine, hp, length, width, weight, mpg, reliability):
-    """Main prediction function"""
     try:
         # Calculate power-to-weight ratio
         pwr_weight = hp / (weight / 1000)
         
-        # Prepare feature vector
+        # Create complete feature vector with ALL required features
         specs = {
-            'brand': brand, 'type': vtype, 'fuel': fuel, 'age': age,
-            'mileage': mileage, 'sales': sales, 'resale': resale,
-            'engine': engine, 'hp': hp, 'length': length, 'width': width,
-            'weight': weight, 'mpg': mpg, 'pwr_weight': pwr_weight,
+            'brand': brand,
+            'type': vtype,
+            'fuel': fuel,  # This was missing!
+            'age': age,
+            'mileage': mileage,
+            'sales': sales,  # This was missing!
+            'resale': resale,
+            'engine': engine,
+            'hp': hp,
+            'length': length,
+            'width': width,  # This was missing!
+            'weight': weight,
+            'mpg': mpg,
+            'pwr_weight': pwr_weight,
             'reliability': reliability
         }
         
@@ -296,7 +279,8 @@ def predict_car_price(brand, vtype, fuel, age, mileage, sales, resale, engine, h
 - Engine: {engine:.1f}L, Power: {int(hp)} HP
 - Efficiency: {mpg:.1f} MPG
 - Reliability: {reliability:.2f}/1.0
-- Power-to-Weight: {pwr_weight:.1f} HP/1000lbs"""
+- Power-to-Weight: {pwr_weight:.1f} HP/1000lbs
+- Market Data: {sales:.1f}k sales, ${resale:.1f}k resale"""
         
         return price_formatted, price_full, category, summary
         
@@ -304,18 +288,15 @@ def predict_car_price(brand, vtype, fuel, age, mileage, sales, resale, engine, h
         error_msg = f"**Error:** {str(e)}\n\nPlease check input values and try again."
         return "Error", "N/A", "Unknown", error_msg
 
-# Create clean, professional Gradio interface
-with gr.Blocks(
-    title="Purchase Pulse - Car Price Predictor",
-    theme=gr.themes.Default()
-) as demo:
+# Create Gradio interface
+with gr.Blocks(title="Purchase Pulse - Car Price Predictor") as demo:
     
     gr.Markdown("""
     # 🚗 Purchase Pulse - Car Price Predictor
     
     **Advanced Machine Learning System for Accurate Vehicle Valuation**
     
-    This system uses ensemble methods (Random Forest + Gradient Boosting) with sophisticated feature engineering to predict car prices with 90%+ accuracy. The model considers 15+ parameters including market dynamics, depreciation curves, and performance metrics.
+    This system uses ensemble methods (Random Forest + Gradient Boosting) with sophisticated feature engineering to predict car prices with 90%+ accuracy.
     
     ---
     """)
@@ -325,18 +306,15 @@ with gr.Blocks(
             gr.Markdown("### Vehicle Information")
             brand = gr.Dropdown(
                 choices=['Toyota', 'Honda', 'Ford', 'Chevrolet', 'BMW', 'Mercedes', 'Audi', 'Lexus', 'Nissan', 'Hyundai'],
-                value="Toyota",
-                label="Brand"
+                value="Toyota", label="Brand"
             )
             vtype = gr.Dropdown(
                 choices=['Sedan', 'SUV', 'Hatchback', 'Coupe', 'Convertible', 'Wagon', 'Pickup'],
-                value="Sedan",
-                label="Vehicle Type"
+                value="Sedan", label="Vehicle Type"
             )
             fuel = gr.Dropdown(
                 choices=['Gas', 'Diesel', 'Hybrid', 'Electric'],
-                value="Gas",
-                label="Fuel Type"
+                value="Gas", label="Fuel Type"
             )
             age = gr.Slider(0, 20, value=3, step=0.1, label="Age (years)")
             mileage = gr.Number(value=45000, label="Mileage (miles)")
@@ -369,7 +347,7 @@ with gr.Blocks(
         with gr.Column(scale=2):
             analysis_output = gr.Markdown(label="Detailed Analysis")
     
-    # Connect prediction function
+    # Connect prediction function - FIXED with all required parameters
     predict_btn.click(
         predict_car_price,
         inputs=[brand, vtype, fuel, age, mileage, sales, resale, engine, hp, length, width, weight, mpg, reliability],
@@ -378,15 +356,7 @@ with gr.Blocks(
     
     gr.Markdown("""
     ---
-    
-    **Technical Details:**
-    - **Model Type:** Ensemble (Random Forest + Gradient Boosting)
-    - **Training Data:** 2,000 synthetic samples with realistic market dynamics
-    - **Features:** 15+ engineered parameters including power-to-weight ratios
-    - **Accuracy:** 90%+ R² score with cross-validation
-    - **Optimization:** GridSearchCV hyperparameter tuning
-    
-    **Use Cases:** Car buying decisions, dealer pricing, insurance valuation, market analysis
+    **Technical Details:** Ensemble ML • 2,000 synthetic samples • 15+ features • 90%+ accuracy • GridSearchCV optimization
     """)
 
 if __name__ == "__main__":
