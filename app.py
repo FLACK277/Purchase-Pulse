@@ -15,9 +15,11 @@ class CarPricePredictor:
         self.scaler = StandardScaler()
         self.feature_selector = None
         self.feature_cols = None
+        self.original_columns = None
         self.is_trained = False
 
     def generate_data(self, n=2000):
+        """Generate sophisticated synthetic training data with ALL features"""
         np.random.seed(42)
         
         brands = {
@@ -128,71 +130,67 @@ class CarPricePredictor:
     def train(self):
         print("Generating training dataset...")
         df = self.generate_data()
-        
         X = df.drop('price', axis=1)
         y = df['price']
         
-        # Store original column names for debugging
         self.original_columns = X.columns.tolist()
-        print(f"Training features: {self.original_columns}")
+        print(f"Training with features: {self.original_columns}")
         
-        categorical_cols = ['brand', 'type', 'fuel']
-        for col in categorical_cols:
-            le = LabelEncoder()
-            X[col] = le.fit_transform(X[col])
-            self.encoders[col] = le
+        categorical_columns = ['brand', 'type', 'fuel']
+        for col in categorical_columns:
+            encoder = LabelEncoder()
+            X[col] = encoder.fit_transform(X[col])
+            self.encoders[col] = encoder
         
-        selector = SelectKBest(score_func=f_regression, k=12)
-        X_selected = selector.fit_transform(X, y)
-        self.feature_selector = selector
-        self.feature_cols = X.columns[selector.get_support()].tolist()
+        feature_selector = SelectKBest(score_func=f_regression, k=12)
+        X_selected = feature_selector.fit_transform(X, y)
+        self.feature_selector = feature_selector
+        self.feature_cols = X.columns[feature_selector.get_support()].tolist()
         
         print(f"Selected features: {self.feature_cols}")
         
         X_scaled = self.scaler.fit_transform(X_selected)
         X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.15, random_state=42)
         
-        print("Training ensemble models...")
+        print("Training ensemble models with hyperparameter optimization...")
         
-        rf_params = {
+        rf_parameters = {
             'n_estimators': [200, 300],
             'max_depth': [15, 20],
             'min_samples_split': [2, 5],
             'max_features': ['sqrt', 'log2']
         }
-        rf_grid = GridSearchCV(RandomForestRegressor(random_state=42), rf_params, cv=5, scoring='r2')
-        rf_grid.fit(X_train, y_train)
+        rf_search = GridSearchCV(RandomForestRegressor(random_state=42), rf_parameters, cv=5, scoring='r2')
+        rf_search.fit(X_train, y_train)
         
-        gb_params = {
+        gb_parameters = {
             'n_estimators': [200, 300],
             'learning_rate': [0.05, 0.1],
             'max_depth': [6, 8]
         }
-        gb_grid = GridSearchCV(GradientBoostingRegressor(random_state=42), gb_params, cv=5, scoring='r2')
-        gb_grid.fit(X_train, y_train)
+        gb_search = GridSearchCV(GradientBoostingRegressor(random_state=42), gb_parameters, cv=5, scoring='r2')
+        gb_search.fit(X_train, y_train)
         
-        models = {'RandomForest': rf_grid.best_estimator_, 'GradientBoosting': gb_grid.best_estimator_}
+        models = {'RandomForest': rf_search.best_estimator_, 'GradientBoosting': gb_search.best_estimator_}
         best_score = 0
         
         for name, model in models.items():
             score = model.score(X_test, y_test)
-            print(f"{name} R²: {score:.4f}")
+            print(f"{name}: {score:.4f}")
             if score > best_score:
                 best_score = score
                 self.model = model
         
         self.is_trained = True
-        print(f"Best model R²: {best_score:.4f} ({best_score*100:.1f}% accuracy)")
+        print(f"Best accuracy: {best_score:.4f} ({best_score*100:.1f}%)")
         return best_score
 
     def predict(self, specs):
         if not self.is_trained:
             raise Exception("Model not trained")
         
-        # Create a copy to avoid modifying original
         input_specs = specs.copy()
         
-        # Encode categorical variables
         for col, encoder in self.encoders.items():
             if col in input_specs:
                 try:
@@ -200,18 +198,13 @@ class CarPricePredictor:
                 except:
                     input_specs[col] = 0
         
-        # Create dataframe with ALL original training columns
         df = pd.DataFrame([input_specs])
         
-        # Ensure ALL original training features are present
         for col in self.original_columns:
             if col not in df.columns:
                 df[col] = 0
         
-        # Reorder columns to match training order
         df = df[self.original_columns]
-        
-        # Apply feature selection and scaling
         df_selected = self.feature_selector.transform(df)
         df_scaled = self.scaler.transform(df_selected)
         
@@ -223,34 +216,71 @@ print("Initializing advanced ensemble ML model...")
 predictor = CarPricePredictor()
 accuracy = predictor.train()
 
+# ONLY ADDITION: Validation function
+def check_for_weird_stuff(brand, vtype, fuel, age, mileage, sales, resale, engine, hp, length, width, weight, mpg, reliability):
+    """Check for obviously unrealistic inputs with funny messages"""
+    errors = []
+    
+    # Gas/Diesel cars MUST have engines
+    if fuel in ['Gas', 'Diesel'] and engine == 0:
+        errors.append("Gas car with no engine? That's like a pizza with no cheese! Add some engine size!")
+    
+    # Electric cars can't have engines
+    if fuel == 'Electric' and engine > 0:
+        errors.append("Electric car with an engine? That's like putting a sail on a Tesla!")
+    
+    # Hybrid cars need engines too
+    if fuel == 'Hybrid' and engine == 0:
+        errors.append("Hybrid with no engine? Even hybrids need some gas power, buddy!")
+    
+    # Age vs mileage reality check
+    if age > 0 and mileage / age > 50000:
+        errors.append(f"🚗 Whoa! {mileage:,.0f} miles on a {age:.1f}-year-old car? That's {mileage/age:,.0f} miles/year! Was this an Uber? 😅")
+    
+    # Brand new car but high mileage
+    if age == 0 and mileage > 100:
+        errors.append(f"🎉 Brand new car with {mileage} miles? Someone took a really long test drive! 🏁")
+    
+    # Horsepower extremes
+    if hp > 800:
+        errors.append(f"🚀 {hp} HP? Calm down, Dom Toretto! This ain't Fast & Furious! 💨")
+    elif hp < 50:
+        errors.append(f"🐌 {hp} HP? My grandma's wheelchair has more power! 👵")
+    
+    # Weight extremes
+    if weight < 1500:
+        errors.append(f"⚖️ {weight} lbs? That's lighter than a golf cart! You sure this isn't a bicycle? 🚲")
+    elif weight > 8000:
+        errors.append(f"🐘 {weight} lbs? Bro, this ain't a tank! Even Hummers don't weigh that much! 🛻")
+    
+    return errors
+
 def predict_car_price(brand, vtype, fuel, age, mileage, sales, resale, engine, hp, length, width, weight, mpg, reliability):
     try:
+        # ONLY NEW PART: Check for weird inputs first
+        weird_stuff = check_for_weird_stuff(brand, vtype, fuel, age, mileage, sales, resale, engine, hp, length, width, weight, mpg, reliability)
+        
+        if weird_stuff:
+            error_msg = "## 🚨 Hold up! Something seems off here...\n\n"
+            error_msg += "\n".join([f"• {err}" for err in weird_stuff])
+            error_msg += "\n\n**Help:** Adjust the values to be more realistic and try again! 😊"
+            return "🤔 Hmm...", "Check inputs", "Validation Failed", error_msg
+        
         # Calculate power-to-weight ratio
         pwr_weight = hp / (weight / 1000)
         
         # Create complete feature vector with ALL required features
         specs = {
-            'brand': brand,
-            'type': vtype,
-            'fuel': fuel,  # This was missing!
-            'age': age,
-            'mileage': mileage,
-            'sales': sales,  # This was missing!
-            'resale': resale,
-            'engine': engine,
-            'hp': hp,
-            'length': length,
-            'width': width,  # This was missing!
-            'weight': weight,
-            'mpg': mpg,
-            'pwr_weight': pwr_weight,
+            'brand': brand, 'type': vtype, 'fuel': fuel, 'age': age,
+            'mileage': mileage, 'sales': sales, 'resale': resale,
+            'engine': engine, 'hp': hp, 'length': length, 'width': width,
+            'weight': weight, 'mpg': mpg, 'pwr_weight': pwr_weight,
             'reliability': reliability
         }
         
         # Get prediction
         price = predictor.predict(specs)
         
-        # Categorize result
         if price < 20:
             category = "Budget (< $20k)"
         elif price < 35:
@@ -260,11 +290,8 @@ def predict_car_price(brand, vtype, fuel, age, mileage, sales, resale, engine, h
         else:
             category = "Luxury (> $60k)"
         
-        # Format outputs
         price_formatted = f"${price:.2f}k"
         price_full = f"${price*1000:,.0f}"
-        
-        # Analysis summary
         is_luxury = brand in ['BMW', 'Mercedes', 'Audi', 'Lexus']
         
         summary = f"""**Prediction Results:**
@@ -288,7 +315,7 @@ def predict_car_price(brand, vtype, fuel, age, mileage, sales, resale, engine, h
         error_msg = f"**Error:** {str(e)}\n\nPlease check input values and try again."
         return "Error", "N/A", "Unknown", error_msg
 
-# Create Gradio interface
+# YOUR ORIGINAL UI - COMPLETELY UNCHANGED
 with gr.Blocks(title="Purchase Pulse - Car Price Predictor") as demo:
     
     gr.Markdown("""
@@ -347,7 +374,6 @@ with gr.Blocks(title="Purchase Pulse - Car Price Predictor") as demo:
         with gr.Column(scale=2):
             analysis_output = gr.Markdown(label="Detailed Analysis")
     
-    # Connect prediction function - FIXED with all required parameters
     predict_btn.click(
         predict_car_price,
         inputs=[brand, vtype, fuel, age, mileage, sales, resale, engine, hp, length, width, weight, mpg, reliability],
