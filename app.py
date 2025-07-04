@@ -1,6 +1,6 @@
 import gradio as gr
 import pandas as pd
-import numpy as n
+import numpy as np
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.model_selection import train_test_split, GridSearchCV
