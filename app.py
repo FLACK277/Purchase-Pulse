@@ -613,7 +613,7 @@ with gr.Blocks(title="Purchase Pulse - Car Price Predictor") as demo:
     gr.Markdown("### Prediction Results")
     
     with gr.Row():
-        with gr.Column(scale=1)
+        with gr.Column(scale=1):
             price_output = gr.Textbox(label="Predicted Price", interactive=False)
             price_full_output = gr.Textbox(label="Full Price", interactive=False)
             category_output = gr.Textbox(label="Market Category", interactive=False)
